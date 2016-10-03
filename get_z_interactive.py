@@ -35,7 +35,7 @@ import pylab as plt
 from scipy.interpolate import spline
 from distutils.sysconfig import *
 import sys
-import pyfits
+import astropy.io.fits as pyfits
 
 def isFloat(string):
     try:
@@ -62,19 +62,23 @@ def getzeroorders (zeroorderpath,g='G141',magcut=23.5): # MB: changed from 23.0
     zoid=[]
     for line in zop:
         if len(line)>60:
-            zox.append(float(line[7:14]))
-            zoy.append(float(line[16:23]))
-            ll=len(line)
-            indend=ll-2
-            ind1=indend-6
-            for i in range(7):
-                if line[ind1+i]!=' ' and line[ind1+i]!='{':
-                    indstart=ind1+i
-                    break
-            if indstart<indend:
-                zoid.append(int(line[indstart:indend]))
-            else:
-                zoid.append(int(line[indend]))
+            linesplit = line.split()
+            zox.append(float(linesplit[1][0:-1]))
+            #zox.append(float(line[7:14]))   #### old syntax reg file 
+            zoy.append(float(linesplit[2][0:-3])) 
+            zoid.append(int( linesplit[-2][-1]))
+            #zoy.append(float(line[16:23]))  ### old synatx reg file 
+            #ll=len(line)
+            #indend=ll-2
+            #ind1=indend-6
+            #for i in range(7):
+            #    if line[ind1+i]!=' ' and line[ind1+i]!='{':
+            #        indstart=ind1+i
+            #        break
+            #if indstart<indend:
+            #    zoid.append(int(line[indstart:indend]))
+            #else:
+            #    zoid.append(int(line[indend]))
     zop.close()
     p_cat110='../DATA/DIRECT_GRISM/fin_F110.cat'
     p_cat140='../DATA/DIRECT_GRISM/fin_F140.cat'
@@ -124,25 +128,27 @@ def getfirstorders (firstorderpath):
     fowid=[]
     foid=[]
     for line in fop:
-        if line[0]!='#':
-            fox.append(float(line[4:12]))
-            foy.append(float(line[13:21]))
-            folen.append(float(line[22:25]))
-            fowid.append(float(line[26]))
-        elif line[0]=='#':
-            ll=len(line)
-            indend=ll-2
-            ind1=indend-6
-            for i in range(7):
-                if line[ind1+i]!=' ' and line[ind1+i]!='{':
-                    indstart=ind1+i
-                    break
+        #if line[0]!='#':
+        linesplit = line.split() 
+        fox.append(float( linesplit[1][0:-1] ))  ### [0:-1] strips off the comma. 
+        foy.append(float(linesplit[2][0:-1]))
+        folen.append(float(linesplit[3][0:-1])) 
+        fowid.append(float(linesplit[-1].split('{')[-1].split('}')[0]))  ### python is weird.
+            #fowid.append(float(line[26]))
+        #elif line[0]=='#':
+        #    ll=len(line)
+         #   indend=ll-2
+         #   ind1=indend-6
+         #   for i in range(7):
+         #       if line[ind1+i]!=' ' and line[ind1+i]!='{':
+         #           indstart=ind1+i
+         #           break
             #print line[indstart:85]
-            if indstart<indend:
-                foid.append(int(line[indstart:indend]))
-            else:
-                foid.append(int(line[indend]))
-    fop.close()
+         #   if indstart<indend:
+         #       foid.append(int(line[indstart:indend]))
+         #   else:
+           #     foid.append(int(line[indend]))
+    #fop.close()
     return (fox,foy,folen,fowid,foid)
 
 
