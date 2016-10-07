@@ -60,13 +60,17 @@ def getzeroorders (zeroorderpath,g='G141',magcut=23.5): # MB: changed from 23.0
     zox=[]
     zoy=[]
     zoid=[]
+    zmag=[]
     for line in zop:
         if len(line)>60:
             linesplit = line.split()
             zox.append(float(linesplit[1][0:-1]))
             #zox.append(float(line[7:14]))   #### old syntax reg file 
             zoy.append(float(linesplit[2][0:-3])) 
-            zoid.append(int( linesplit[-2][-1]))
+            #zoid.append(int( linesplit[-2][-1]))  #### was only getting 1 digit
+            zoid.append(int(linesplit[-2].split('{')[-1]))
+            zmag.append(float(linesplit[-1][1:-2]))  ### get mag from reg file
+
             #zoy.append(float(line[16:23]))  ### old synatx reg file 
             #ll=len(line)
             #indend=ll-2
@@ -80,45 +84,51 @@ def getzeroorders (zeroorderpath,g='G141',magcut=23.5): # MB: changed from 23.0
             #else:
             #    zoid.append(int(line[indend]))
     zop.close()
-    p_cat110='../DATA/DIRECT_GRISM/fin_F110.cat'
-    p_cat140='../DATA/DIRECT_GRISM/fin_F140.cat'
-    p_cat160='../DATA/DIRECT_GRISM/fin_F160.cat'
-    if (g=='G141' and os.path.exists(p_cat140)==0 and os.path.exists(p_cat160)==0):
-        print 'Cannot find H-band source catalog to determine magnitude cut on G141 Zero-order reg.'
-        return (zox,zoy,zoid)
-    elif g=='G141' and os.path.exists(p_cat140)==1:
-        print 'Using F140W source catalog to determine magnitude cut on G141 Zero-order reg.'
-        p=p_cat140
-    elif g=='G141' and os.path.exists(p_cat160)==1:
-        print 'Using F160W source catalog to determine magnitude cut on G141 Zero-order reg.'
-        p=p_cat160
-    if g!='G141' and os.path.exists(p_cat110)==0 and os.path.exists(p_cat140)==1:
-        print 'No F110W source catalog. Using F140W catalog for magnitude cut on G102 Zero-order reg.'
-        p=p_cat140
-    elif g!='G141' and os.path.exists(p_cat110)==0 and os.path.exists(p_cat160)==1:
-        print 'No F110W source catalog. Using F160W catalog for magnitude cut on G102 Zero-order reg.'
-        p=p_cat160
-    elif g!='G141' and os.path.exists(p_cat110)==1:
-        print 'Using F110W source catalog to determine magnitude cut on G102 Zero-order reg.'
-        p=p_cat110
-    elif g!='G141':
-        print 'No source catalog found to determine magnitude cut on G102 Zero-order reg.'
-        return (zox,zoy,zoid)
-    catdat=np.genfromtxt(p,dtype=np.str)
-    catid=np.array(catdat[0:,1],dtype=np.int)
-    catmags=np.array(catdat[0:,12],dtype=np.float)
-    filt=catmags<=magcut
+    ### don't need the get the catalogs anymore ###
+    ### getting magnitudes from region file ###
+#    p_cat110='../DATA/DIRECT_GRISM/fin_F110.cat'
+#    p_cat140='../DATA/DIRECT_GRISM/fin_F140.cat'
+#    p_cat160='../DATA/DIRECT_GRISM/fin_F160.cat'
+#    if (g=='G141' and os.path.exists(p_cat140)==0 and os.path.exists(p_cat160)==0):
+#        print 'Cannot find H-band source catalog to determine magnitude cut on G141 Zero-order reg.'
+#        return (zox,zoy,zoid)
+#    elif g=='G141' and os.path.exists(p_cat140)==1:
+#        print 'Using F140W source catalog to determine magnitude cut on G141 Zero-order reg.'
+#        p=p_cat140
+#    elif g=='G141' and os.path.exists(p_cat160)==1:
+#        print 'Using F160W source catalog to determine magnitude cut on G141 Zero-order reg.'
+#        p=p_cat160
+#    if g!='G141' and os.path.exists(p_cat110)==0 and os.path.exists(p_cat140)==1:
+#        print 'No F110W source catalog. Using F140W catalog for magnitude cut on G102 Zero-order reg.'
+#        p=p_cat140
+#    elif g!='G141' and os.path.exists(p_cat110)==0 and os.path.exists(p_cat160)==1:
+#        print 'No F110W source catalog. Using F160W catalog for magnitude cut on G102 Zero-order reg.'
+#        p=p_cat160
+#    elif g!='G141' and os.path.exists(p_cat110)==1:
+#        print 'Using F110W source catalog to determine magnitude cut on G102 Zero-order reg.'
+#        p=p_cat110
+#    elif g!='G141':
+#        print 'No source catalog found to determine magnitude cut on G102 Zero-order reg.'
+#        return (zox,zoy,zoid)
+#    catdat=np.genfromtxt(p,dtype=np.str)
+#    catid=np.array(catdat[0:,1],dtype=np.int)
+#    catmags=np.array(catdat[0:,12],dtype=np.float)
+#    filt=catmags<=magcut
     zoid=np.array(zoid)
     zoy=np.array(zoy)
     zox=np.array(zox)
-    zx,zy,zi=[],[],[]
-    for id_mag in catid[filt]:
-        zfilt=zoid==id_mag
-        if len(zoid[zfilt])==1:
-            zx.append(zox[zfilt])
-            zy.append(zoy[zfilt])
-            zi.append(zoid[zfilt])
-    return (zx,zy,zi)
+    zmag=np.array(zmag)
+    cond = (zmag <= magcut)
+    return zox[cond],zoy[cond],zoid[cond]
+#    zx,zy,zi=[],[],[]
+#    for id_mag in catid[filt]:
+#        zfilt=zoid==id_mag
+#        if len(zoid[zfilt])==1:
+#            zx.append(zox[zfilt])
+#            zy.append(zoy[zfilt])
+#            zi.append(zoid[zfilt])
+#    return (zx,zy,zi)
+
 
 def getfirstorders (firstorderpath):
     fop=open(firstorderpath,'r')
@@ -166,12 +176,24 @@ def go (linelistfile=" ",save_temp=True,recover_temp=False,show_dispersed=False)
     else:
         print "Found line list file %s" % (linelistfile)
 
-    # check for trace region files
-    if os.path.isfile('G102_trace.reg')==0 or os.path.isfile('G141_trace.reg')==0:
-        print '\nMissing one or both trace region files.'
-        print 'Expecting them in Spectra/ directory.'
-        print 'Exiting'
-        return 0
+    ### CREAT TRACE REGION FILES ###
+    trace102 = open('G102_trace.reg', 'w')
+    trace102.write('global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1\n')
+    trace102.write('wcs;\n')
+    trace102.write('box(9950,0,3100,1,1.62844e-12)\n')
+    trace102.close()
+    trace141 = open('G141_trace.reg', 'w')
+    trace141.write('global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1\n')
+    trace141.write('wcs;\n')
+    trace141.write('box(14142.49,0,5500,1,0)\n')
+    trace141.close()
+
+#    # check for trace region files
+#    if os.path.isfile('G102_trace.reg')==0 or os.path.isfile('G141_trace.reg')==0:
+#        print '\nMissing one or both trace region files.'
+#        print 'Expecting them in Spectra/ directory.'
+#        print 'Exiting'
+#        return 0
 
     lam_Halpha=6563.0
     lam_Hbeta=4861.0
@@ -602,51 +624,73 @@ def show2dNEW (grism,parno,obid,firstx,firsty,firstlen,firstwid,firstid,zerox,ze
         frameno='2'
     if os.path.exists(path2d)==1:
         infits=pyfits.open(path2d)
-        darr=infits[-1].data
+        ### changing to read in 1st data extension ###
+        #darr=infits[-1].data
+        hdr=infits[1].header
+        darr=infits[1].data
         dims=darr.shape
         infits.close()
     elif os.path.exists(path2d)==0:
         print "%s stamp not found." % (grism)
         return False
 
-    matchind=0
-    i=0
-    for fid in firstid:
-        if fid==obid:
-            matchind=i
-            break
-        i=i+1
-    xmin=firstx[matchind]-firstlen[matchind]/2.0
-    xmax=firstx[matchind]+firstlen[matchind]/2.0
-    ymin=firsty[matchind]-firstwid[matchind]/2.0
-    ymax=firsty[matchind]+firstwid[matchind]/2.0
-    
-    numzer=0
-    if len(dims)>0:
-        xdim=float(max(dims))
-        ydim=float(min(dims))
+    ### USING THE DRIZZLE TRANSFORMATIONS TO GET ZEROTH ORDERS ###
+    _cx = np.array([xcoo for xcoo in zerox]) - hdr['BB0X'] - 1
+    _cy = np.array([ycoo for ycoo in zeroy]) - hdr['BB0Y'] - 1
+    cx = hdr['D001OUXC'] + (hdr['DRZ00'] + hdr['DRZ01']*(_cx-hdr['D001INXC']) + hdr['DRZ02']*(_cy-hdr['D001INYC']))
+    cy = hdr['D001OUYC'] + (hdr['DRZ10'] + hdr['DRZ11']*(_cx-hdr['D001INXC']) + hdr['DRZ12']*(_cy-hdr['D001INYC']))
+    # convert to (Angs,arcsec) coords
+    cx = (cx - hdr['CRPIX1'])*hdr['CDELT1'] + hdr['CRVAL1']
+    cy = (cy - hdr['CRPIX2'])*hdr['CDELT2'] + hdr['CRVAL2']
+    rad = 5 * hdr['CDELT1']
     outcoo=par_root_dir+"Spectra/temp_zero_coords.reg"
     if os.path.exists(outcoo)==1:
         os.unlink(outcoo)
-    coordout=open(outcoo,'w')
-    print >>coordout, "image"
+    f = open(outcoo, 'w')
+    f.write('wcs;\n')
     for j in range(len(zerox)):
-        # MB: use dims of stamp, rather than size of 1st order in region file
-        if zerox[j] >= (firstx[matchind] - xdim/2.) and \
-           zerox[j] <= (firstx[matchind] + xdim/2.) and \
-           zeroy[j] >= (firsty[matchind] - ydim/2.) and \
-           zeroy[j] <= (firsty[matchind] + ydim/2.) and grism=='G102':
-#    	if zerox[j]>=(xmin-zrad) and zerox[j]<=(xmax+zrad) and zeroy[j]>=(ymin-zrad) and zeroy[j]<=(ymax+zrad) and grism=='G102':
-    		print >>coordout, "circle(%.2f,%.2f,5.0) # text={%s}" % (zerox[j]/1.7-firstx[matchind]/1.7+212./2.0-13,zeroy[j]/1.6-firsty[matchind]/1.6+ydim/2.0+3.6,zeroid[j])
+        f.write('circle(%.2f,%.4f,%.1f) # color=red text={%s}\n' % (cx[j],cy[j],rad,zeroid[j]))
+    f.close()
 
-        elif zerox[j] >= (firstx[matchind] - xdim/2.) and \
-             zerox[j] <= (firstx[matchind] + xdim/2.) and \
-             zeroy[j] >= (firsty[matchind] - ydim/2.) and \
-             zeroy[j] <= (firsty[matchind] + ydim/2.) and grism=='G141':
-#    	elif  zerox[j]>=(xmin-zrad) and zerox[j]<=(xmax+zrad) and zeroy[j]>=(ymin-zrad) and zeroy[j]<=(ymax+zrad) and grism=='G141':
-    		print >>coordout, "circle(%.2f,%.2f,5.0) # text={%s}" % (zerox[j]/1.7-firstx[matchind]/1.7+184./2.0,zeroy[j]/1.6-firsty[matchind]/1.6+ydim/2.0+0.6,zeroid[j])
-    numzer=numzer+1
-    coordout.close()
+    ### THIS WAS ALL FOR THE OLD TRANSFORMATION ###
+#    matchind=0
+#    i=0
+#    for fid in firstid:
+#        if fid==obid:
+#            matchind=i
+#            break
+#        i=i+1
+#    xmin=firstx[matchind]-firstlen[matchind]/2.0
+#    xmax=firstx[matchind]+firstlen[matchind]/2.0
+#    ymin=firsty[matchind]-firstwid[matchind]/2.0
+#    ymax=firsty[matchind]+firstwid[matchind]/2.0
+#    
+#    numzer=0
+#    if len(dims)>0:
+#        xdim=float(max(dims))
+#        ydim=float(min(dims))
+#    outcoo=par_root_dir+"Spectra/temp_zero_coords.reg"
+#    if os.path.exists(outcoo)==1:
+#        os.unlink(outcoo)
+#    coordout=open(outcoo,'w')
+#    print >>coordout, "image"
+#    for j in range(len(zerox)):
+#        # MB: use dims of stamp, rather than size of 1st order in region file
+#        if zerox[j] >= (firstx[matchind] - xdim/2.) and \
+#           zerox[j] <= (firstx[matchind] + xdim/2.) and \
+#           zeroy[j] >= (firsty[matchind] - ydim/2.) and \
+#           zeroy[j] <= (firsty[matchind] + ydim/2.) and grism=='G102':
+##    	if zerox[j]>=(xmin-zrad) and zerox[j]<=(xmax+zrad) and zeroy[j]>=(ymin-zrad) and zeroy[j]<=(ymax+zrad) and grism=='G102':
+#    		print >>coordout, "circle(%.2f,%.2f,5.0) # text={%s}" % (zerox[j]/1.7-firstx[matchind]/1.7+212./2.0-13,zeroy[j]/1.6-firsty[matchind]/1.6+ydim/2.0+3.6,zeroid[j])
+#
+#        elif zerox[j] >= (firstx[matchind] - xdim/2.) and \
+#             zerox[j] <= (firstx[matchind] + xdim/2.) and \
+#             zeroy[j] >= (firsty[matchind] - ydim/2.) and \
+#             zeroy[j] <= (firsty[matchind] + ydim/2.) and grism=='G141':
+##    	elif  zerox[j]>=(xmin-zrad) and zerox[j]<=(xmax+zrad) and zeroy[j]>=(ymin-zrad) and zeroy[j]<=(ymax+zrad) and grism=='G141':
+#    		print >>coordout, "circle(%.2f,%.2f,5.0) # text={%s}" % (zerox[j]/1.7-firstx[matchind]/1.7+184./2.0,zeroy[j]/1.6-firsty[matchind]/1.6+ydim/2.0+0.6,zeroid[j])
+#    numzer=numzer+1
+#    coordout.close()
     
     if trans=='log':
         zscale='log'
@@ -715,7 +759,8 @@ def showDirectNEW(obid,lineno=-1):
         os.system(cmd)
         cmd='xpaset -p ds9 file '+path110
         os.system(cmd)
-        cmd='xpaset -p ds9 regions file '+par_root_dir+'DATA/DIRECT_GRISM/F110.reg'
+        ### using F110_drz.reg with F110W_drz.fits
+        cmd='xpaset -p ds9 regions file '+par_root_dir+'DATA/DIRECT_GRISM/F110_drz.reg'
         os.system(cmd)
         cmd='xpaset -p ds9 pan to '+hexcoo[0]+' '+hexcoo[1]+' fk5'
         os.system(cmd)
@@ -724,7 +769,7 @@ def showDirectNEW(obid,lineno=-1):
         os.system(cmd)
         cmd='xpaset -p ds9 file '+path140
         os.system(cmd)
-        cmd='xpaset -p ds9 regions file '+par_root_dir+ 'DATA/DIRECT_GRISM/F140.reg'
+        cmd='xpaset -p ds9 regions file '+par_root_dir+ 'DATA/DIRECT_GRISM/F140_drz.reg'
         os.system(cmd)
         cmd='xpaset -p ds9 pan to '+hexcoo[0]+' '+hexcoo[1]+' fk5'
         os.system(cmd)
@@ -733,7 +778,7 @@ def showDirectNEW(obid,lineno=-1):
         os.system(cmd)
         cmd='xpaset -p ds9 file '+path160
         os.system(cmd)
-        cmd='xpaset -p ds9 regions file '+par_root_dir+'DATA/DIRECT_GRISM/F160.reg'
+        cmd='xpaset -p ds9 regions file '+par_root_dir+'DATA/DIRECT_GRISM/F160_drz.reg'
         os.system(cmd)
         cmd='xpaset -p ds9 pan to '+hexcoo[0]+' '+hexcoo[1]+' fk5'
         os.system(cmd)
@@ -748,8 +793,9 @@ def showDispersed(obid,lineno=-1):  # MB
         par_root_dir= par_root_dir +pdir + '/'
 
     path2dispersed=par_root_dir+'DATA/DIRECT_GRISM/'
-    path102=path2dispersed+'G102_drz.fits'
-    path141=path2dispersed+'G141_drz.fits'
+    ### Using G102.fits instead of G102_drz.fits ###
+    path102=path2dispersed+'G102.fits'
+    path141=path2dispersed+'G141.fits'
     path102_0reg = os.path.join(path2dispersed, 'G102_0th.reg')
     path102_1reg = os.path.join(path2dispersed, 'G102_1st.reg')
     path141_0reg = os.path.join(path2dispersed, 'G141_0th.reg')
@@ -758,25 +804,29 @@ def showDispersed(obid,lineno=-1):  # MB
         print "No Grism Images Found."
         return 0
     # get center of 1st order
+    ### Using same syntax as getzeroorders for consistency ###
     if os.path.exists(path102_1reg)==1:
         reg102=open(path102_1reg,'r')
-        lines=reg102.readlines()
         x102,y102=-1,-1
-        for i in range(0,len(lines),2):
-            textid=int(lines[i+1].split('{')[1].strip('}\n'))
+        for line in reg102:
+            # using same syntax as getzeroorders
+            linesplit = line.split()
+            textid = int(re.search('\d+',linesplit[-1]).group(0))
             if textid==obid:
-                x102,y102=float(lines[i][4:11]),float(lines[i][13:20])
+                x102 = float(linesplit[1].split(',')[0])
+                y102 = float(linesplit[2].split(',')[0])
         reg102.close()
     else:
         return 0
     if os.path.exists(path141_1reg)==1:
         reg141=open(path141_1reg,'r')
-        lines=reg141.readlines()
         x141,y141=-1,-1
-        for i in range(0,len(lines),2):
-            textid=int(lines[i+1].split('{')[1].strip('}\n'))
+        for line in reg141:
+            linesplit = line.split()
+            textid = int(re.search('\d+',linesplit[-1]).group(0))
             if textid==obid:
-                x141,y141=float(lines[i][4:11]),float(lines[i][13:20])
+                x141 = float(linesplit[1].split(',')[0])
+                y141 = float(linesplit[2].split(',')[0])
         reg141.close()
     else:
         return 0
